@@ -57,3 +57,140 @@ Um erro 404 será retornado, visto que o endpoint acessado não existe em nossa 
 }
 ```
 
+Esse tipo de resposta, pode acabar servindo como pista, para alguém mal intecionado. Essa é uma vulnerabilidade. Vamos aprofundar mais sobre esses comportamentos enquanto implmentamos a segurança a nossa API.
+Aqui estão algumas fontes, para pesquisa de vulnerabilidades: [Fingerprint](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server), [Directory Transversal](https://owasp.org/www-community/attacks/Path_Traversal) e [WSTG]([https://owasp.org/www-community/attacks/Path_Traversal](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/03-Identity_Management_Testing/04-Testing_for_Account_Enumeration_and_Guessable_User_Account))
+
+# Tornando nossa API Segura
+## Segurança padrão (Secure Defaults)
+Veremos asseguir alguns padrões do Spring Security e como sobre o princípio de *Segurança por padrão" e "Princípio do menor Privilégio" aos seus aplicativos.
+
+*Secure by Default" ou *Seguro por Padrão*, é um princípio que incentiva você a garantir que suas configurações padrão sejam seguras. Dessa forma, se um aplicativo se encontrar em produção com os padrões de segurança, acaba não sendo vulnerável, por assim dizer.
+
+*O Princípio do Menor Privilégio* é um princípio que incentiva você a pensar em cada fração de dado como um privilégio a ser possuído e a dar aos usuários finais os menores privilégios possíveis para que eles possam fazer bem seu trabalho.
+
+O Spring Security adota ambas as filosofias para proteger automaticamente APIs REST. 
+
+## Padrões de segurança do Spring
+
+Quando o Spring Security está no classpath, o Spring Boot trabalha para configurar seu aplicativo com os seguintes padrões para uma API REST:
+
+- Requer autenticação para todas as solicitações
+- Responde com cabeçalhos seguros para todas as solicitações
+- Requer mitigação de CSRF para todas as solicitações com efeitos colaterais
+- Permite autenticação HTTP Basic com um usuário padrão
+- Responde RESTfully a falhas de segurança
+- Protege contra solicitações maliciosas com um firewall de aplicativo
+
+Vamos analisar cada um deles de cada vez e relacioná-los aos princípios de Segurança por Padrão e Princípio do Menor Privilégio.
+
+### Requer autenticação para todas as solicitações
+Não importa se o endpoint é gerado por você ou pelo Boot, todas as requests em todos os dispatches exigem autenticação.
+
+Independentemente da natureza do endpoint, o Spring Security aplica um Filtro de Servlet que inspeciona cada solicitação e a rejeita se a solicitação não for autenticada.
+
+Este é um dos padrões de segurança do Spring Security.
+
+*Servlets, (Filtros) Filters, and Dispatchers* 
+
+Para entender um pouco melhor, precisamos abordar um pouco da terminologia da API do Servlet.
+
+A API Java Servlet é responsável processar solicitações HTTP dentro de um aplicativo. Usando a terminologia de servlet, uma determinada solicitação HTTP pode passar por vários *dispatches*. Cada dispatch pode ser interceptado por vários *filtros* em seu caminho para um único *servlet*.
+
+Um *servlet* manipula solicitações HTTP e produz uma resposta HTTP. Você fazer a analogia de um *servlet* como um "mini-servidor".
+
+Um *filtro* intercepta requisições HTTP para lidar com preocupações transversais. Normalmente, os filtros enriquecem a requisição de alguma forma ou negam a requisição, impedindo que ela alcance o servlet.
+
+Um *dispach* representa uma única passagem que uma solicitação HTTP faz por um conjunto de filtros e seu servlet de destino. Normalmente, uma solicitação HTTP passa primeiro pelo REQUEST dispatch (despacho), mas também pode passar posteriormente pelo ERROR dispatch, pelo FORWARD dispatch e outros.
+
+Em termos de Spring, o Spring MVC constitui um único servlet, o Spring Security constitui um conjunto de filtros e o Spring Boot é fornecido com um contêiner incorporado que executa os vários *dispatchs* necessários para atender a uma única solicitação.
+
+Tudo isso significa que os padrões do Spring Security exigem que cada *dispatch* seja autenticado.
+
+### Benefícios de segurança
+O legal desse arranjo é que não importa quem criou o endpoint. Se for você, Boot ou um terceiro, o filtro de servlet do Spring Security intercepta a solicitação antes que qualquer servlet (um "mini-servidor") possa processá-la.
+
+Isso significa que quando você inclui o Spring Security, mesmo endpoints inexistentes retornarão um código 401 Unauthorized de status de resposta HTTP em vez de, digamos, um 404 Not Found, sendo o 404 resposta padrão do Spring Boot para endpoints inexistentes. O motivo dessa política rigorosa é por causa do *Princípio do Menor Privilégio*. Esse princípio diz que você deve oferecer apenas as informações que o usuário final tem o privilégio de saber.
+
+Qual é o problema? O que há de tão privilegiado em um ponto final inexistente?
+
+Para fins de segurança, até mesmo quais URIs são válidos são informações privilegiadas. Você pode imaginar se alguém solicitasse index.jsp ou /admin . Se o Spring Security retornasse um *404* nesses casos em vez de um *401*, isso significaria *404* que é uma dica para um agente mal-intencionado de que um determinado endpoint existe! O agente mal-intencionado pode usar essa dica para enumerar os URIs válidos das APIs REST, descobrir tecnologias vulneráveis ​​subjacentes e acelerar seu ataque.
+
+### Responde com cabeçalhos seguros para todas as *requests*
+Os cabeçalhos HTTP permitem que um cliente e um servidor troquem informações adicionais entre si em uma *request* e *response* HTTP. Seja uma solicitação autenticada ou não, o Spring Security sempre responde com determinados cabeçalhos por padrão. Cada cabeçalho assume como padrão o valor mais seguro disponível.
+
+*Cabeçalhos de cache*
+O primeiro são os cabeçalhos de controle de cache. Uma classe de vulnerabilidades baseadas em navegador é que as respostas HTTP são armazenadas em cache no navegador. Por exemplo, suponha que sua API REST retornou o seguinte:
+``` json
+[
+  {
+    "amount": 123.45,
+    "id": 99,
+    "owner": "sarah1"
+  },
+  {
+    "amount": 1.0,
+    "id": 100,
+    "owner": "sarah1"
+  }
+]
+```
+
+Então essa *response* poderia ser armazenada em cache no navegador para recuperação posterior por um agente mal-intencionado na máquina local do usuário.
+
+O Spring Security aplica configurações seguras para *Cache-Control* e outros cabeçalhos para mitigar essa vulnerabilidade.
+
+***O Cabeçalho Strict Transport Security***
+O segundo é o cabeçalho Strict Transport Security. Esse cabeçalho força um navegador a atualizar solicitações para HTTPS por um período de tempo especificado.
+
+OBSERVAÇÃO: Como isso é destinado a *requests* HTTPS, ele não é escrito por padrão para uma *request* HTTP. Considerando isso, você pode não vê-lo em seus testes locais sobre HTTP.
+
+Há muito tempo o HTTPS tem se mostrado um componente crítico de implantações seguras. Ataques man-in-the-middle tornam possível que os dados que passam entre o usuário final e a API REST sejam visualizados e modificados.
+
+Tais ataques são mitigados por HTTPS, e o cabeçalho Strict Transport Security informa ao navegador para não enviar nenhuma solicitação para esta REST API por HTTP. Em vez disso, qualquer solicitação HTTP deve ser automaticamente atualizada pelo navegador para HTTPS.
+
+**Opções de tipo de conteúdo**
+O terceiro e último cabeçalho sobre o qual falaremos neste ponto é o cabeçalho X-Content-Type-Options. Este cabeçalho diz aos navegadores para não tentarem adivinhar o tipo de conteúdo de uma resposta.
+
+Um lugar comum onde atores mal-intencionados se escondem é onde o protocolo HTTP é confuso e os aplicativos tentam entender, e adivinhar a intenção da *request* ou *response*. Um navegador, por exemplo, pode olhar para uma resposta que começa com <html> e tentar adivinhar que o tipo de conteúdo é text/html– ou seja, uma página da web. Às vezes, essa suposição não é segura. Por exemplo, é possível que uma imagem contenha conteúdo de script e o navegador pode ser enganado para adivinhar e executar steal-my-password.jpgccomo JavaScript.
+
+O Spring Security resolve isso emitindo uma configuração segura *X-Content-Type-Options* por padrão.
+
+###  Requer mitigação de CSRF para todas as solicitações com efeitos colaterais
+Outro ponto em que as APIs REST correm risco é a capacidade de sites de terceiros fazerem solicitações a elas sem o consentimento do usuário.
+
+Isso é possível porque os navegadores, por padrão, enviam todos os cookies e detalhes de autenticação HTTP Basic automaticamente para qualquer endpoint não XHR.
+
+Por exemplo, dê uma olhada nesta *request* de uma suposta imagem:
+*** html
+<img src="https://mybank.example.org/account/32?transfer=25&toAccount=45" />
+***
+Essa solicitação será executada pelo navegador. Isso funciona porque o navegador não tem como saber se a URL aponta para uma imagem até que a resposta retorne. A essa altura, o dano já foi feito.
+
+Como você pode imaginar, os navegadores até fazem essa solicitação em sites de terceiros. Os navegadores, por padrão, enviarão todos os cookies do *mybank.example.org*  e credenciais HTTP Basic para ele também por padrão. Isso significa que, se seu usuário estiver logado, um aplicativo de terceiros pode comandar sua API REST sem proteção adicional.
+
+Por isso, o Spring Security protege automaticamente esses endpoints com efeitos colaterais, como POSTs, PUTs e DELETEs. Ele faz isso enviando um token especial para o cliente que ele deve usar em solicitações subsequentes. O token é transmitido de tal forma que terceiros não podem vê-lo. Então, quando o token é retornado, o Spring Security acredita que ele é legitimamente do cliente.
+
+### Permite autenticação básica HTTP com um usuário padrão parei aqui
+Você estava se perguntando sobre isso, não é?
+
+O Spring Security gera um usuário padrão chamado user. Sua senha é gerada, no entanto, em cada inicialização.
+
+O motivo para isso é que, se você acidentalmente implantar os padrões do Spring Security para produção, ninguém poderá usar o nome de usuário e a senha padrão para comandar seu aplicativo. Esta é outra instância clássica de criação de um aplicativo que é Secure By Default ou, em outras palavras, um aplicativo cujas configurações padrão são seguras.
+
+Para descobrir a senha, você pode consultar os logs de inicialização do Boot para esta sequência:
+
+cópia de
+Using generated security password: fc7e0357-7d82-4a9c-bae7-798887f7d3b3
+O UUID nessa string é a senha. Ele será diferente para cada vez que o aplicativo for iniciado.
+
+Conforme declarado, o Spring Security, por padrão, aceitará esse nome de usuário e senha usando o padrão de autenticação HTTP Basic, com o qual você terá a oportunidade de praticar em breve.
+
+Responde RESTfully a falhas de segurança
+O Spring Security responde com um 401 Unauthorizedcódigo de status quando as credenciais estão erradas ou ausentes na solicitação. Ele também, por padrão, enviará os cabeçalhos apropriados para indicar o tipo de autenticação esperado. O significado implícito de a 401é que a solicitação não é autenticada .
+
+Ele responde com um 403 Forbiddencódigo de status quando as credenciais são boas, mas a solicitação não é autorizada, como quando um usuário final tenta executar uma solicitação somente de administrador. O significado implícito de a 403é que a solicitação não é autorizada .
+
+Protege contra solicitações maliciosas com um firewall de aplicativo
+Há inúmeras outras maneiras pelas quais um agente mal-intencionado pode tentar fazer mau uso da sua API REST. Com muitas delas, a melhor prática é rejeitar a solicitação imediatamente.
+
+O Spring Security ajuda você com isso adicionando um firewall de aplicativo que, por padrão, rejeita solicitações que contêm codificação dupla e vários caracteres inseguros, como retornos de carro e quebras de linha. Usar o firewall do Spring Security ajuda a mitigar classes inteiras de vulnerabilidades.
