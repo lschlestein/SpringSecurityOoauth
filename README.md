@@ -18,6 +18,7 @@ GET http://localhost:8080/cashcards
 ```
 
 Requisições do tipo GET, em aplicações não seguras, ou seja, onde o cabeçalho da requisição, não requer dados de autenticação, também podem ser feitas através de seu navegador:
+
 ![image](https://github.com/user-attachments/assets/c97d1337-6a94-4736-9403-f37ff8419a56)
 
 ## Os potencias risco e fragilidades de uma aplicação não segura
