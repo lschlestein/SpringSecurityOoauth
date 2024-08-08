@@ -199,17 +199,13 @@ Nessa prática, adicionaremos o Spring Security ao projeto desse repositório e 
 No projeto inicial, adicionar a dependência do Spring Security no arquivo pom.xml, conforme segue:
 
 ``` xml
-<dependencies>
-  .
-  .
-  .
+      <dependencies>
+        ...
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-.
-.
-.
-</dependencies>
+        ...
+      </dependencies>
 ```
 
