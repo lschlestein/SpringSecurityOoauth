@@ -39,3 +39,21 @@ Você acabou de ver esse ponto em ação quando consultou a API pela primeira ve
 **Conteúdo desprotegido**
 E como o conteúdo está desprotegido, quando essa API REST é exposta a um navegador, ela pode tornar o aplicativo como um todo vulnerável a CSRF, MITM, XSS e outros ataques sem intervenção adicional.
 
+## Sobre o erro 404s
+
+Para compreensão, com a aplicação rodando, tente fazer uma requisição, em um endpoint que não existe:
+
+``` bash
+GET http://localhost:8080/endpoint-nao-existente
+```
+Um erro 404 será retornado, visto que o endpoint acessado não existe em nossa aplicação.
+
+``` json
+{
+  "timestamp": "2024-08-08T15:19:19.017+00:00",
+  "status": 404,
+  "error": "Not Found",
+  "path": "/endpoint-nao-existente"
+}
+```
+
