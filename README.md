@@ -161,9 +161,9 @@ Outro ponto em que as APIs REST correm risco é a capacidade de sites de terceir
 Isso é possível porque os navegadores, por padrão, enviam todos os cookies e detalhes de autenticação HTTP Basic automaticamente para qualquer endpoint não XHR.
 
 Por exemplo, dê uma olhada nesta *request* de uma suposta imagem:
-*** html
+´´´ html
 <img src="https://mybank.example.org/account/32?transfer=25&toAccount=45" />
-***
+´´´
 Essa solicitação será executada pelo navegador. Isso funciona porque o navegador não tem como saber se a URL aponta para uma imagem até que a resposta retorne. A essa altura, o dano já foi feito.
 
 Como você pode imaginar, os navegadores até fazem essa solicitação em sites de terceiros. Os navegadores, por padrão, enviarão todos os cookies do *mybank.example.org*  e credenciais HTTP Basic para ele também por padrão. Isso significa que, se seu usuário estiver logado, um aplicativo de terceiros pode comandar sua API REST sem proteção adicional.
