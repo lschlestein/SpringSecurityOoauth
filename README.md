@@ -170,27 +170,25 @@ Como você pode imaginar, os navegadores até fazem essa solicitação em sites 
 
 Por isso, o Spring Security protege automaticamente esses endpoints com efeitos colaterais, como POSTs, PUTs e DELETEs. Ele faz isso enviando um token especial para o cliente que ele deve usar em solicitações subsequentes. O token é transmitido de tal forma que terceiros não podem vê-lo. Então, quando o token é retornado, o Spring Security acredita que ele é legitimamente do cliente.
 
-### Permite autenticação básica HTTP com um usuário padrão parei aqui
-Você estava se perguntando sobre isso, não é?
-
+### Permite autenticação básica HTTP com um usuário padrão
 O Spring Security gera um usuário padrão chamado user. Sua senha é gerada, no entanto, em cada inicialização.
 
-O motivo para isso é que, se você acidentalmente implantar os padrões do Spring Security para produção, ninguém poderá usar o nome de usuário e a senha padrão para comandar seu aplicativo. Esta é outra instância clássica de criação de um aplicativo que é Secure By Default ou, em outras palavras, um aplicativo cujas configurações padrão são seguras.
+O motivo para isso é que, se você acidentalmente implantar os padrões do Spring Security para produção, ninguém poderá usar o nome de usuário e a senha padrão para comandar seu aplicativo. Esta é outra instância clássica de criação de um aplicativo que é *Secure By Default* ou, um aplicativo cujas configurações padrão são seguras.
 
-Para descobrir a senha, você pode consultar os logs de inicialização do Boot para esta sequência:
-
-cópia de
+A senha do usuário: *user* pode ser encontrada no logo de inicialização da aplicação:
+``` bash
 Using generated security password: fc7e0357-7d82-4a9c-bae7-798887f7d3b3
+```
 O UUID nessa string é a senha. Ele será diferente para cada vez que o aplicativo for iniciado.
 
-Conforme declarado, o Spring Security, por padrão, aceitará esse nome de usuário e senha usando o padrão de autenticação HTTP Basic, com o qual você terá a oportunidade de praticar em breve.
+Conforme declarado, o Spring Security, por padrão, aceitará esse nome de usuário e senha usando o padrão de autenticação HTTP Basic, como veremos em seguida:
 
-Responde RESTfully a falhas de segurança
-O Spring Security responde com um 401 Unauthorizedcódigo de status quando as credenciais estão erradas ou ausentes na solicitação. Ele também, por padrão, enviará os cabeçalhos apropriados para indicar o tipo de autenticação esperado. O significado implícito de a 401é que a solicitação não é autenticada .
+### Responde RESTfully a falhas de segurança
+O Spring Security responde com um código de status "401 Unauthorized" quando as credenciais estão erradas ou ausentes na solicitação. Ele também, por padrão, enviará os cabeçalhos apropriados para indicar o tipo de autenticação esperado. O significado implícito do "401" é que a solicitação não é autenticada .
 
-Ele responde com um 403 Forbiddencódigo de status quando as credenciais são boas, mas a solicitação não é autorizada, como quando um usuário final tenta executar uma solicitação somente de administrador. O significado implícito de a 403é que a solicitação não é autorizada .
+Ele responde com um código de status "403 Forbidden" quando as credenciais são boas, mas a solicitação não é autorizada, como quando um usuário final tenta executar uma solicitação somente de administrador. O significado implícito do 403 é que a solicitação não é autorizada .
 
-Protege contra solicitações maliciosas com um firewall de aplicativo
+### Protege contra solicitações maliciosas com um firewall de aplicativo
 Há inúmeras outras maneiras pelas quais um agente mal-intencionado pode tentar fazer mau uso da sua API REST. Com muitas delas, a melhor prática é rejeitar a solicitação imediatamente.
 
 O Spring Security ajuda você com isso adicionando um firewall de aplicativo que, por padrão, rejeita solicitações que contêm codificação dupla e vários caracteres inseguros, como retornos de carro e quebras de linha. Usar o firewall do Spring Security ajuda a mitigar classes inteiras de vulnerabilidades.
