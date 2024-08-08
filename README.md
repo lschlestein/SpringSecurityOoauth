@@ -260,3 +260,59 @@ Após modificar a classe de testes, execute os testes novamente:
 ``` bash
 > mvn tests
 ```
+
+``` bash
+[ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 5.474 s <<< FAILURE! -- in example.cashcardoauth2.CashCardApplicationTests
+[ERROR] example.cashcardoauth2.CashCardApplicationTests.shouldCreateANewCashCard -- Time elapsed: 0.023 s <<< FAILURE!
+java.lang.AssertionError: Status expected:<201> but was:<403>
+```
+
+O teste *shouldCreateANewCashCard* que testa a criação de um novo cartão de crédito falhou, mas esse comportamento para uma requisição do tipo POST, era esperado.
+
+### Requer CSRF para Todas as Solicitações com Efeitos Colaterais
+
+Como visto, os testes passaram exceto o *shouldCreateANewCashCard*, que é um teste POST que cria um novo CashCard. Isso ocorre porque o Spring Security não autoriza POSTs sem um token CSRF.
+
+É possívl adicionar isso na declaração MockMvc usando um dos MockMvc RequestPostProcessors do Spring Security, ou seja, csrf().
+
+Para corrigir o teste com suporte CSRF, importe o método auxiliar estático e adicione o token CSRF à solicitação:
+
+Primeiro, importe o método estático
+``` java
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+...
+void shouldCreateANewCashCard() throws Exception {
+  String location = this.mvc.perform(post("/cashcards")
+      .with(csrf())
+   ...
+```
+Rodando os testes novamente, agora os 3 deverão passar.
+
+### Requer Autenticação para todas As Requisições (Requests)
+
+Vamos fazer uma requisição http: no endpoint */Cashcards*:
+  - Inicie a aplicação através de sua IDE ou do terminal:
+``` bash
+> mvn spring-boot:run
+```
+  - Faça uma requisição a aplicação utlizando sua ferramenta preferida (Postman, HTTPie, etc):
+```
+HTTP/1.1 401 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Set-Cookie: JSESSIONID=CFD6DB8E3CCBBF61B4690CBCB2262C92; Path=/; HttpOnly
+WWW-Authenticate: Basic realm="Realm"
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Length: 0
+Date: Thu, 08 Aug 2024 18:36:25 GMT
+
+<Response body is empty>
+
+Response code: 401; Time: 35ms (35 ms); Content length: 0 bytes (0 B)
+```  
