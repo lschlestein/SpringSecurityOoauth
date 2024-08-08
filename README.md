@@ -295,7 +295,15 @@ Vamos fazer uma requisição http: no endpoint */Cashcards*:
 ``` bash
 > mvn spring-boot:run
 ```
-  - Faça uma requisição a aplicação utlizando sua ferramenta preferida (Postman, HTTPie, etc):
+  - Faça uma requisição a aplicação utlizando sua ferramenta preferida (Postman, HTTPie, etc), como segue:
+``` bash
+GET http://localhost:8080/cashcards
+```
+Caso esteja utilizando o HTTPie, interrogue conforme segue:
+``` bash
+http :8080/cashcards
+```
+O retorno deverá ser:
 ```
 HTTP/1.1 401 
 Vary: Origin
@@ -316,3 +324,33 @@ Date: Thu, 08 Aug 2024 18:36:25 GMT
 
 Response code: 401; Time: 35ms (35 ms); Content length: 0 bytes (0 B)
 ```  
+Ao invés de obtermos as informações dos cartões de crédito, recebemos um código 401.
+Isso ocorre, devido ao Spring Security, requerer autenticação para qualquer requisiçao feita a nossa aplicação Spring Boot.
+
+Nota: Como abordado anteriormente, o Spring Security usa convenções REST ao responder a falhas de segurança: 401 para erros de autenticação, 403 para erros de autorização.
+
+Para compreender isso ainda mais, agora tente um endpoint inexistente como este:
+``` bash
+GET http://localhost:8080/endpoint-nao-existente
+```
+Caso esteja utilizando o HTTPie, interrogue conforme segue:
+``` bash
+http :8080/endpoint-nao-existente
+```
+O retorno deverá ser:
+``` bash
+http :8080/endpoint-nao-existente
+HTTP/1.1 401
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+```
+Pode-se notar que agora, obtivemos um código 401, ao invés do código 404 que obtinhamos, antes da aplicação ter sido protegida. Essa estratégia é defensiva, para que informação protegida não seja compartilhada de forma publica.
+
+### Verifique os cabeçalhos
+Anteriormente vimos que o Spring Security "Responde com Cabeçalhos Seguros para Todas as Requisições". Podemos ver esse princípio em ação em nossos testes recém executados.
+``` bash
+...
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+...
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+```
