@@ -358,6 +358,7 @@ X-Frame-Options: DENY
 #Prática 2 - Utilizando HTTP Basic e o Usuário Padrão:
 
 Localize a senha padrão, fornecida no log da aplicação Spring Boot:
+
 Interrogue a aplicação, agora passando as credenciais:
 ```bash
 http -a user:6cc833e4-... :8080/cashcards
