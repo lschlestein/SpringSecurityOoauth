@@ -358,6 +358,7 @@ X-Frame-Options: DENY
 #Prática 2 - Utilizando HTTP Basic e o Usuário Padrão:
 
 Localize a senha padrão, fornecida no log da aplicação Spring Boot:
+
 Interrogue a aplicação, agora passando as credenciais:
 ```bash
 http -a user:6cc833e4-... :8080/cashcards
@@ -403,3 +404,9 @@ X-XSS-Protection: 0
     }
 ]
 ```
+Feito isso, novamente, interrogue a aplicação, agora passando as credenciais agora com um endpoint que não exista:
+``` bash
+http -a user:6cc833e4-... :8080/endpoint-inexistente
+```
+Interrogando via Postman:
+![img.png](img.png)
