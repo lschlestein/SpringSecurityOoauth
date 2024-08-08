@@ -186,9 +186,30 @@ Conforme declarado, o Spring Security, por padrão, aceitará esse nome de usuá
 ### Responde RESTfully a falhas de segurança
 O Spring Security responde com um código de status "401 Unauthorized" quando as credenciais estão erradas ou ausentes na solicitação. Ele também, por padrão, enviará os cabeçalhos apropriados para indicar o tipo de autenticação esperado. O significado implícito do "401" é que a solicitação não é autenticada .
 
-Ele responde com um código de status "403 Forbidden" quando as credenciais são boas, mas a solicitação não é autorizada, como quando um usuário final tenta executar uma solicitação somente de administrador. O significado implícito do 403 é que a solicitação não é autorizada .
+Ele responde com um código de status "403 Forbidden" quando as credenciais são boas, mas a solicitação não é autorizada, como quando um usuário final tenta executar uma solicitação somente de administrador. O significado implícito do 403 é que a solicitação não é autorizada.
 
 ### Protege contra solicitações maliciosas com um firewall de aplicativo
 Há inúmeras outras maneiras pelas quais um agente mal-intencionado pode tentar fazer mau uso da sua API REST. Com muitas delas, a melhor prática é rejeitar a solicitação imediatamente.
 
 O Spring Security ajuda você com isso adicionando um firewall de aplicativo que, por padrão, rejeita solicitações que contêm codificação dupla e vários caracteres inseguros, como retornos de carro e quebras de linha. Usar o firewall do Spring Security ajuda a mitigar classes inteiras de vulnerabilidades.
+
+# Prática 1 - Tornando a Aplicação Segura com a Segurança Padrão (Security´s Defaults)
+Nessa prática, adicionaremos o Spring Security ao projeto desse repositório e vamos explorar como é a proteção padrão, fornecida pelo Spring Security.
+
+No projeto inicial, adicionar a dependência do Spring Security no arquivo pom.xml, conforme segue:
+
+``` xml
+<dependencies>
+  .
+  .
+  .
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+.
+.
+.
+</dependencies>
+```
+
