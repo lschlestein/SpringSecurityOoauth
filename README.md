@@ -354,3 +354,52 @@ Cache-Control: no-cache, no-store, max-age=0, must-revalidate
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 ```
+
+#Prática 2 - Utilizando HTTP Basic e o Usuário Padrão:
+
+Localize a senha padrão, fornecida no log da aplicação Spring Boot:
+Interrogue a aplicação, agora passando as credenciais:
+```bash
+http -a user:6cc833e4-... :8080/cashcards
+```
+Caso esteja utilizando Postman, configure a requisição conforme segue:
+![image](https://github.com/user-attachments/assets/6a03e4e3-cd2c-49a6-800f-af040a818dc9)
+
+A resposta deverá conter os cartões de crédito:
+
+``` bash
+http -a user:722a6428-d501-4a91-9785-5276835890d1 :8080/cashcards
+HTTP/1.1 200 
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Connection: keep-alive
+Content-Type: application/json
+Date: Thu, 08 Aug 2024 19:10:11 GMT
+Expires: 0
+Keep-Alive: timeout=60
+Pragma: no-cache
+Transfer-Encoding: chunked
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 0
+
+[
+    {
+        "amount": 123.45,
+        "id": 99,
+        "owner": "sarah1"
+    },
+    {
+        "amount": 1.0,
+        "id": 100,
+        "owner": "sarah1"
+    },
+    {
+        "amount": 150.0,
+        "id": 101,
+        "owner": "esuez5"
+    }
+]
+```
