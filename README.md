@@ -209,3 +209,54 @@ No projeto inicial, adicionar a dependência do Spring Security no arquivo pom.x
       </dependencies>
 ```
 
+Dessa forma o Spring Security é adicionando ao *classpath*, e a autoconfiguração é feita pelo Spring Boot.
+Em seguida, rode os teste da aplicação. No terminal, digite:
+``` bash
+> mvn tests
+```
+
+```
+[ERROR]   CashCardApplicationTests.shouldCreateANewCashCard:44 Status expected:<201> but was:<403>
+[ERROR]   CashCardApplicationTests.shouldReturnACashCardWhenDataIsSaved:28 Status expected:<200> but was:<401>
+[ERROR]   CashCardApplicationTests.shouldReturnAllCashCardsWhenListIsRequested:57 Status expected:<200> but was:<401>
+```
+Os testes falharam, somente pela adição do security ao classpath. Isso devido a segurança padrão *(secure by default)* do Spring Security.
+
+### Requer Autenticação para Todas Requests
+Conforme visto anteriormente, o Spring Security requer autenticação para todos os endpoints por padrão. É por isso que os testes estão falhando, relatando que um 401 ao invés vez do código de status esperado.
+
+Para alterar os testes para fornecer autenticação serão necessários dois passos.
+1 - Confirmar que a dependência de testes, do Spring Security está adicionada ao pom.xml
+``` xml
+</dependencies>
+    ...
+    <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    ...
+    </dependencies>
+```
+
+2 - Utilizar a anotação *@WithMockUser* no testes
+
+A dependencia de testes do Spring Security, fornece a possibilidade de simular um usuário, ou *principal*, como se ele estivesse autenticado durante os testes.
+
+Adicione a anotação *@WithMockUser* no topo da classe de testes *CashCardApplicationTests*
+``` java
+import org.springframework.security.test.context.support.WithMockUser;
+...
+@SpringBootTest
+@AutoConfiguredMockMvc
+@WithMockUser
+public class CashCardApplicationTests {
+ ...
+```
+
+Dessa forma o Spring Boot ira simular um usuário *user* para cada teste. Dessa forma, pode-se confirmar que a segurança da API está configurada corretamente.
+
+Após modificar a classe de testes, execute os testes novamente:
+``` bash
+> mvn tests
+```
