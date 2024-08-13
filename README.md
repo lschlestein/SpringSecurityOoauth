@@ -233,7 +233,7 @@ Para alterar os testes para fornecer autenticação serão necessários dois pas
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
-        </dependency>
+    </dependency>
     ...
     </dependencies>
 ```
@@ -257,7 +257,7 @@ Dessa forma o Spring Boot ira simular um usuário *user* para cada teste. Podeno
 
 Após modificar a classe de testes, execute os testes novamente:
 ``` bash
-> mvn tests
+> mvn test
 ```
 
 ``` bash
@@ -272,7 +272,7 @@ O teste *shouldCreateANewCashCard* que testa a criação de um novo cartão de c
 
 Como visto, os testes passaram exceto o *shouldCreateANewCashCard*, que é um teste POST que cria um novo CashCard. Isso ocorre porque o Spring Security não autoriza POSTs sem um token CSRF.
 
-É possívl adicionar isso na declaração MockMvc usando um dos MockMvc RequestPostProcessors do Spring Security, ou seja, csrf().
+É possível adicionar isso na declaração MockMvc usando um dos MockMvc RequestPostProcessors do Spring Security, ou seja, csrf().
 
 Para corrigir o teste com suporte CSRF, importe o método auxiliar estático e adicione o token CSRF à solicitação:
 
