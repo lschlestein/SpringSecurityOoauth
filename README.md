@@ -9,11 +9,7 @@ Nesse repositório serão abordados os seguintes assuntos:
 * Teste seu aplicativo com a segurança habilitada
 
 # A API Rest sem segurança
-Clone a aplicação desse repositório, em seguida, inicie-a.
-Talvez seja necessário fazer checkout para o commit inicial da aplicação:
-```
-git checkout 2ef5144
-```
+Faça o clone dessa aplicação [aqui](https://github.com/lschlestein/SpringSecurityOauthBase.git), em seguida, inicie-a.
 Em seguinda, utilizando uma ferramenta para requisições Http (Como Postman, HTTPie, ou outra de sua preferência), faça uma requisição conforme segue:
 ``` bash
 GET http://localhost:8080/cashcards
