@@ -688,7 +688,7 @@ import java.util.logging.Logger;
 @Component
 public class CashCardJwtTokenGenerator {
 
-    private static final Logger LOGGER = Logger.getLogger(CashCardTokenGen.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(CashCardTokenGenerator.class.getName());
 
     @Autowired
     JwtEncoder jwtEncoder;
