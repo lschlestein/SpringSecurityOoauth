@@ -1,4 +1,4 @@
-# SpringSecurityOoauth
+# Spring Security Com Ooauth
 
 Nesse repositório serão abordados os seguintes assuntos:
 
