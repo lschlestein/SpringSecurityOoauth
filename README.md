@@ -10,6 +10,7 @@ Nesse repositório serão abordados os seguintes assuntos:
 
 # A API Rest sem segurança
 Faça o clone dessa aplicação [aqui](https://github.com/lschlestein/SpringSecurityOauthBase.git), em seguida, inicie-a.
+
 Em seguinda, utilizando uma ferramenta para requisições Http (Como Postman, HTTPie, ou outra de sua preferência), faça uma requisição conforme segue:
 ``` bash
 GET http://localhost:8080/cashcards
