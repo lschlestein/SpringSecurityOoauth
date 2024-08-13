@@ -239,9 +239,9 @@ Para alterar os testes para fornecer autenticação serão necessários dois pas
     </dependencies>
 ```
 
-2 - Utilizar a anotação *@WithMockUser* no testes
+2 - Utilizar a anotação *@WithMockUser* nos testes
 
-A dependencia de testes do Spring Security, fornece a possibilidade de simular um usuário, ou *principal*, como se ele estivesse autenticado durante os testes.
+A dependencia de testes do Spring Security, fornece a possibilidade de simular um usuário, ou o *principal*, como se ele estivesse autenticado durante os testes.
 
 Adicione a anotação *@WithMockUser* no topo da classe de testes *CashCardApplicationTests*
 ``` java
@@ -254,7 +254,7 @@ public class CashCardApplicationTests {
  ...
 ```
 
-Dessa forma o Spring Boot ira simular um usuário *user* para cada teste. Dessa forma, pode-se confirmar que a segurança da API está configurada corretamente.
+Dessa forma o Spring Boot ira simular um usuário *user* para cada teste. Podeno assim se confirmar que a segurança da API está configurada corretamente.
 
 Após modificar a classe de testes, execute os testes novamente:
 ``` bash
@@ -355,7 +355,7 @@ X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 ```
 
-#Prática 2 - Utilizando HTTP Basic e o Usuário Padrão:
+# Prática 2 - Utilizando HTTP Basic e o Usuário Padrão:
 
 Localize a senha padrão, fornecida no log da aplicação Spring Boot:
 
@@ -410,3 +410,493 @@ http -a user:6cc833e4-... :8080/endpoint-inexistente
 ```
 Interrogando via Postman:
 ![img.png](img.png)
+
+# Adicionando Autenticação
+
+Veremos agora Spring Security como uma estrutura para autenticação de requisições. Isso significa confirmar:
+
+A identidade do chamador - quem fez a solicitação, às vezes chamou para o cliente ou para o agente
+A identidade do principal - sobre quem é a solicitação, geralmente um usuário final
+A integridade da solicitação - prova de que a solicitação não foi modificada por um intermediário
+Cada um deles pode ser bastante complexo de garantir, e é por isso que recorrer a protocolos e estruturas de segurança para obter suporte é estrategicamente importante.
+
+Nota: Principal é um termo genérico que representa "quem" está fazendo a solicitação. A razão pela qual usamos principal é porque às vezes o "quem" não é uma pessoa, mas sim outra máquina.
+
+## Negociação de Conteúdo
+As configurações padrão do Spring Security confirmam a identidade do principal usando os esquemas de autenticação Form Login e HTTP Basic. Ele usa negociação de conteúdo para selecionar entre os dois.
+
+Por exemplo, se um navegador navega para um endpoint não autenticado na sua API, então, por padrão, o Spring Security redireciona para sua página de login padrão, que se parece com esta:
+![image](https://github.com/user-attachments/assets/49e64d9c-a7fc-4273-99e0-4816b02f18b5)
+
+Por outro lado, se alguém fizer uma solicitação REST não autenticada como esta:
+``` bash
+[~/exercises] $ http :8080
+```
+
+Em seguida, o Spring Security usa o cabeçalho WWW-Authenticate para indicar qual esquema de autenticação ele espera:
+``` bash
+WWW-Authenticate: Basic
+```
+
+Em vez disso, se a solicitação REST fornecer um cabeçalho Authorization seguindo o esquema HTTP Basic:
+``` bash
+[~/exercises] $ http :8080 "Authorization: Basic dXNlcjpwYXNzd29yZA=="
+```
+
+Nota: O comando do HTTPie http -a adicionará o cabeçalho Authorization: Basic para você se você passar oparâmetro "-a" . Acima, adicionamos o cabeçalho manualmente.
+
+O Spring Security vê o esquema Básico e exerce seu suporte de autenticação HTTP Básico.
+
+## Processo de autenticação
+Para detalhar um pouco mais, você pode pensar no suporte de autenticação do Spring Security em três partes, independentemente do esquema de autenticação usado:
+
+1 - Ele analisa o material solicitado em uma credencial.
+
+2 - Ele testa essa credencial.
+
+3 - Se a credencial for aprovada, ela traduz essa credencial em um "principal" e suas autoridades.
+
+No caso acima, você pode ver essas três etapas em ação:
+
+1 - O Spring Security decodifica o nome de usuário e a senha codificados em Base64. A senha é a credencial neste caso.
+
+2 - Ele testa esse nome de usuário e senha em relação a um armazenamento de usuário. Especificamente, com senhas, ele faz o hash da senha e a compara ao hash da senha do usuário.
+
+3 - Se as senhas corresponderem, ele carrega o usuário e as permissões correspondentes e os armazena em seu contexto de segurança (security context). O usuário resultante é o principal que mencionamos anteriormente.
+
+Todos os esquemas de autenticação seguem essa abordagem geral no Spring Security.
+
+## Solicitações subsequentes
+
+Alguns esquemas de autenticação são *stateful*, enquanto outros são *stateless*. *Stateful* significa que seu aplicativo lembra informações sobre requisições anteriores. *Stateless* significa que seu aplicativo não lembrará requisições anteriores.
+
+Os dois esquemas de autenticação padrão são bons exemplos de cada um. O Form Login é um exemplo de um esquema de autenticação *stateful*. Ele armazena o usuário logado em uma sessão. Desde que o identificador da sessão seja retornado em solicitações subsequentes, o usuário final não precisa fornecer credenciais novamente. Para muitos sites, é por isso que você não precisa fazer login a cada nova página que visita no site.
+
+HTTP Basic é um exemplo de esquema de autenticação *stateless*. Como ele não lembra nada de solicitações anteriores, você precisa dar a ele o nome de usuário e a senha em cada solicitação.
+
+Observação: lembre-se de que o Spring Security ativa os esquemas de autenticação HTTP Basic e Form Login por padrão. Você pode especificá-los e outros diretamente com uma instância personalizada SecurityFilterChain. Caso essa instância personalizada não seja configurada, o Spring Boot autoconfigura a mesma de forma básica.
+
+## Limites do HTTP Basic
+
+O Spring Security ativa o HTTP Basic por padrão, pois é uma maneira fácil e direta para começar. Porém, esse modelo de autenticação é limitado.
+
+Em de forma geral, as limitações são:
+
+* Credenciais de longo prazo
+* Bypass de autorização e
+* Exposição de dados sensíveis
+Antes de analisá-los, considere um arranjo comum de um aplicativo que usa HTTP Basic entre um cliente e uma API REST:
+
+``` mermaid
+flowchart LR
+    id1((User)) -- Fornece a senha --> id2([Client *App*])
+    id2 -- Basic Auth --> id3([Rest API *Seus dados*])
+```
+Neste diagrama, há um aplicativo cliente que usa seu nome de usuário e senha para trocar informações com uma API REST em seu nome. Um exemplo disso é um aplicativo de orçamento de terceiros que quer chamar uma API REST e importar transações.
+
+## Credenciais de longo prazo
+Para entender essa primeira limitação, considere isto: quando foi a última vez que você alterou a senha da sua conta online menos usada? Em muitos casos, a resposta é da ordem de anos!
+
+Se uma API REST usa seu nome de usuário e senha como credenciais, isso significa que qualquer um que obtiver seu nome de usuário e senha pode se passar por você enquanto sua senha for válida.
+
+Mesmo que você pudesse mudar todas as suas senhas em todos os sistemas semanalmente, qual das suas contas você aceitaria conceder acesso a um malfeitor por uma semana inteira?
+
+Dado isso, a principal limitação do HTTP Basic é que ele usa uma credencial de longo prazo que exige que o usuário final a altere.
+
+## Bypass de autorização
+Outra limitação é que quando você fornece seu nome de usuário e senha da API REST a um cliente terceirizado, esse aplicativo passa a ter posse do seu nome de usuário e senha.
+
+Embora isso possa parecer óbvio, significa que você precisa perguntar agora: Você confia que esse aplicativo usará seu nome de usuário e senha apenas para os propósitos que você deseja? Além disso, você tem que confiar que esse aplicativo não será comprometido por atores ruins em quem você não confia.
+
+Seria bom se houvesse uma maneira de ter uma credencial que, além de ser de curto prazo, também indicasse quais coisas você autoriza o cliente a fazer com seus dados.
+
+## Exposição de dados sensíveis
+Lembre-se de que o HTTP Basic é stateless. Sempre que um aplicativo cliente de terceiros chama a REST API, ele precisa entregar seu nome de usuário e senha toda vez que você faz uma solicitação HTTP.
+
+Além disso, isso significa que o aplicativo cliente precisa manter seu nome de usuário e senha em texto simples em algum lugar para que ele possa repassá-los repetidamente para a API REST.
+
+Isso significa que uma única solicitação HTTP interceptada ou um único despejo de memória de um aplicativo cliente pode revelar sua senha!
+
+Então, além de ter uma credencial de curto prazo que seja inteligente o suficiente para autorizar ações específicas, sua senha não deve ser mantida (em texto simples ou não) por terceiros em lugar nenhum. Nunca.
+
+# OAuth 2.0 e JWT
+## OAuth 2.0
+Lembre-se de que uma preocupação primária de segurança é que as senhas são credenciais altamente sensíveis de longo prazo. Seria melhor ter credenciais que durassem apenas alguns minutos. Mas, não é realista para nós, humanos, mudar constantemente nossas senhas.
+
+OAuth 2.0 – um protocolo padrão da indústria para autorização que foi adotado por milhares de empresas e usado em milhões de aplicativos – fornece uma estrutura para fazer exatamente isso.
+
+Em resumo, o OAuth 2.0 descreve três atores:
+
+* O aplicativo cliente, que deseja acessar seus dados e fornecer serviços, geralmente um aplicativo da web, móvel ou desktop.
+* O Servidor de Recursos, que armazena e protege seus dados, geralmente uma API REST.
+* O Servidor de Autorização, que autoriza um cliente a acessar seus dados.
+``` mermaid
+flowchart LR
+    id1((User)) --> id2([Client *app*])
+    id2 -- Envia o Token --> id3([Resource *Seus Dados*])
+    id2 -- Solicita o Token --> id4([Authz *app*])
+    id4 -- Fornece o Token --> id2
+```
+
+Esses três atores interagem entre si da seguinte maneira:
+
+- O aplicativo cliente solicita ao servidor de autorização permissão para comandar o servidor de recursos.
+- O servidor de autorização decide se concede ou não permissão.
+- Se o servidor de autorização conceder permissão, ele cria um token de acesso que expira após um período de tempo. Este token de acesso descreve quais permissões o cliente recebeu
+- O cliente faz uma solicitação ao servidor de recursos, incluindo o token de acesso.
+- O servidor de recursos verifica se o token de acesso tem as permissões corretas e responde adequadamente.
+Dessa forma, o aplicativo cliente nunca vê sua senha.
+
+## JSON Web Tokens
+JSON Web Token (JWT) é um formato padrão da indústria para codificação de tokens de acesso. Quando um servidor de autorização cria um token de acesso, ele pode escrevê-lo no formato JWT, que é amplamente difundido.
+
+Um JWT decodificado em sua forma mais básica é um conjunto de cabeçalhos e declarações:
+
+Os cabeçalhos contêm metadados sobre o token.
+Claims são fatos que o token está afirmando, como qual principal o token representa. Elas são chamadas de "claims" porque ainda precisam ser verificadas pelo servidor de recursos – o JWT "reivindica" que esses fatos sejam verdadeiros.
+
+Exemplo:
+
+```  json
+{
+  "typ": "JWT",
+  "alg": "RS256"
+}
+
+```
+``` json
++cabeçalhos
+{
+  "aud": "https://cashcard.example.org",
+  "exp": 1689364985,
+  "iat": 1689361385,
+  "iss": "https://issuer.example.org",
+  "scp": ["cashcard:read", "cashcard:write"],
+  "sub": "sarah1"
+}
+```
++reivindicações (claims)
+
+A declaração iss identifica o servidor de autorização que cunhou (gerou) o token.
+A declaração exp indica quando o token expira.
+A declaração scp (scope) indica o conjunto de permissões concedidas pelo servidor de autorização.
+A sub reivindicação é uma referência ao principal que o token representa.
+Uma informação crítica é a assinatura do JWT. Pense em uma assinatura como sua assinatura em um contrato. Uma boa assinatura só pode ser produzida por uma entidade, que nos fornece o que é chamado de *não-repúdio (non-repudiation)*, ou prova de que o contrato foi assinado por você e somente você.
+
+Na criptografia, uma assinatura também fornece *integridade de mensagem*, ou prova de que a mensagem não foi alterada por ninguém depois. Você pode, neste caso, pensar no selo de não adulteração em uma embalagem no mercado. Se o selo estiver quebrado, você não deve comprá-lo, pois isso significa que alguém pode ter adulterado.
+
+Parte do processo de criação é para o servidor de autorização assinar o JWT. Então, o servidor de recursos verifica essa assinatura. Isso permite que o servidor de recursos confirme a integridade da solicitação, além da identidade do principal.
+
+
+## Suporte Spring Boot
+O Spring Security é totalmente compatível, com JWT e Spring Security, fornecendo recursos que facilitam a configuração de segurança para utilização de JWT.
+
+Para servidores de recursos, vamos revisar as etapas vistas anteriormente sobre como o Spring Security processa a autenticação:
+
+Ele analisa o contéudo de solicitação em uma credencial. O Spring Security procura por *Authorization: Bearer ${JWT}*.
+
+Ele testa essa credencial. O Spring Security usa uma instância *JwtDecoder* para consultar o servidor de autorização em busca de chaves, usa essas chaves para verificar a assinatura dos JWTs e valida que é de um emissor confiável e ainda está dentro da janela de expiração.
+
+Se a credencial for aprovada, ela traduz essa credencial em um *principal* e *autoridades*. O Spring Security armazena as declarações do JWT como o principal. Ele pega a declaração *scope* e analisa cada valor individualmente em uma permissão com o padrão *SCOPE_${value}*.
+
+Esse princípio e essas autoridades são então armazenados pelo Spring Security e ficam acessíveis durante o restante da solicitação.
+
+# Prática 3 - Adicionando a depedência do Oauth Resource Server ao Projeto
+
+Agora vamos modificar o método de autenticação de Basic para Oauth
+Para isso precisamos primeiramente adicionar as seguintes dependências ao projeto:
+
+``` xml
+<dependencies>
+  ...
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+  </dependency>
+  ...
+</dependencies>
+```
+Dessa forma o Spring Boot se autoconfigurará, e adicionará os módulos Spring Boot Resource Server e JWT ao projeto.
+
+## Configurando o Resource Server
+
+Agora precisamos como a nossa API REST, que agora é um resource server Oauth 2.0, irá verificar as assinaturas JWT. Normalmente se utilizam chaves públicas para verificar essas assinaturas, sendo assim, utiliza as chaves públicas contidas nesse repositório [chaves colocar o link aqui]().
+Faça a seguinte configuração no application.properties:
+``` bash
+spring.security.oauth2.resourceserver.jwt.public-key-location = classpath:authz.pub
+```
+Certifique-se de a chave authz.pub está no diretório *resources* do projeto.
+
+Após configurar o Resource Server, o Spring Boot ativará a auto configuração do nosso resource server.
+
+## Verifique se os testes ainda funcionam   **v e r i f i c a r**
+``` bash
+mvn test
+```
+Como ainda não existem testes específicos para o protocoloo, o Spring Security adatou os existentes e os mesmos deverão passar.
+
+## Por dentro do Resource Server
+Verificaremos de forma uma pouco mais profunda, os logs do Spring Security. Para isso iremos melhorar os logs de informação, adicionando a seguinte configuração ao *application.properties*:
+``` bash
+logging.level.org.springframework.security = trace
+```
+Em seguida rode a aplicação novamente:
+``` bash
+mvn spring-boot:run
+```
+Não deverão mais ser criados, o usuário (user) e senha padrão, gerados anteriomente pelo Spring Security.
+
+## Verificando o método de autenticação
+Interrogue a aplicação, conforme segue:
+``` bash
+http :8080/cashcards
+```
+Espera-se que a requisição falhe, retornando um *401*, porém, a resposta deverá conter no cabeçalho, algo conforme segue:
+``` http
+HTTP/1.1 401
+...
+WWW-Authenticate: Bearer
+...
+```
+## Autenticando uma Requisição
+Como agora estamos trabalhando com um Resource Server, precisamos providenciar um JSON Web Token para adicionarmos a nossas requisições. Faremos isso da seguinte forma:
+
+## Configurando a geração de tokens
+Normalmente, o JWT viria de um aplicativo cliente solicitando autorização de um servidor de autorização. Como ainda não dispomos de tal recursos, vamos editar nossa aplicação.
+
+Crie uma nova classe CashCardJwtTokenGenerator.java:
+``` java
+package example.cashcardoauth2;
+
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.jwt.*;
+import org.springframework.stereotype.Component;
+
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
+
+@Component
+public class CashCardJwtTokenGenerator {
+
+    private static final Logger LOGGER = Logger.getLogger(CashCardTokenGen.class.getName());
+
+    @Autowired
+    JwtEncoder jwtEncoder;
+
+    public String mint() {
+        return mint(consumer -> {
+        });
+    }
+
+    private String mint(Consumer<JwtClaimsSet.Builder> consumer) {
+        JwtClaimsSet.Builder builder = JwtClaimsSet.builder().issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(200000)).subject("sarah1").issuer("http://localhost:8080").audience(Arrays.asList("cashcard-client")).claim("scp", Arrays.asList("cashcard:read", "cashcard:write"));
+        consumer.accept(builder);
+        JwtEncoderParameters parameters = JwtEncoderParameters.from(builder.build());
+        return this.jwtEncoder.encode(parameters).getTokenValue();
+    }
+
+    @PostConstruct
+    public void logTokenOnInitialization() {
+        String token = mint();
+        LOGGER.info("Generated JWT on startup: " + token);
+    }
+
+    @Configuration
+    static class jwtEncoderConfiguration {
+        @Bean
+        JwtEncoder jwtEncoder(@Value("classpath:authz.pub") RSAPublicKey pub, @Value("classpath:authz.pem") RSAPrivateKey pem) {
+            RSAKey key = new RSAKey.Builder(pub).privateKey(pem).build();
+            return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(key)));
+        }
+
+        @Bean
+        public JwtDecoder jwtDecoder(@Value("classpath:authz.pub") RSAPublicKey pub) {
+            return NimbusJwtDecoder.withPublicKey(pub).build();
+        }
+    }
+
+}
+```
+Essa classe, irá gerar um token JWT, de forma análoga ao esquema antigo, onde a cada incialização, um user e password eram gerados. Vale lembrar, que isso só está sendo feito para fins acadêmicos, e não deve jamais ser utilizado em produção.
+Pode-se, notar que estão sendo configurados beans para o JwtEncoder, o JwtDecoder e método mint, para esculpir ou criar o token em si. Nota-se que para codificar um token, são utilizadas as ambas a chaves, e para decodificar um token, somente a chave pública.
+
+Adicionar explicação sobre como o token é gerado
+``` java
+  JwtClaimsSet
+    .builder()
+      .issuedAt(Instant.now()) //Inicio da validade do token
+      .expiresAt(Instant.now()
+      .plusSeconds(200000))  // //Fim da validade do token
+      .subject("sarah1")    // User or principal, para qual o token é atribuído
+      .issuer("http://localhost:8080")    //Emissor do token (verificar no application.properties)
+      .audience(Arrays.asList("cashcard-client")) //Espectador do token (verificar no application.properties)
+      .claim("scp", Arrays.asList("cashcard:read", "cashcard:write")); //Reinvindicações (claims) do token. 
+```
+Após a configurarmos a geração do token, rodar a aplicação:
+``` bash
+mvn spring-boot:run
+```
+Veja que um token foi gerado, assim que aplicação foi inicializada:
+``` bash
+2024-08-13T10:25:45.771-03:00  INFO 21392 --- [CashCardOauth2] [           main] e.c.CashCardJwtTokenGenerator            : Generated JWT on startup: eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYXJhaDEiLCJhdWQiOiJjYXNoY2FyZC1jbGllbnQiLCJzY3AiOlsiY2FzaGNhcmQ6cmVhZCIsImNhc2hjYXJkOndyaXRlIl0sImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImV4cCI6MTcyMzc1NTU0NSwiaWF0IjoxNzIzNTU1NTQ1fQ.qwQKlphaor5do2FTGdtyXPRuxdkeC5COUQ6Yy27JT0Ll7dR74lhseDPQqNmqR_wOwW7P4zzfS8sEeT1UMQC2pgtIj7dOBK3uMwOtzFHrFBH5XDYufIUXJUU4YcQVUb4Kc2qgHEC4YTZMq3YDDB1OYDQAz104vkWpkjDWc5tVxggSwJE1xnqHXr7o52HrseRG9J-b3HEwE2d1HDz7XQiSL0kvRy9sROmWxvw0qDrwWghiOl6qkRovzw5oL-dsrZ1pgV2KTHk58fCXhWnzpmqEFuhBIbWzY0b_IXIjubbqIj57_5aYrR7yjoTUiT9mObaE7i3yYEBTkEh-1sK4KlQTag
+```
+Vamos agora, inspecionar o conteúdo desse token, fazendo sua decodificação. Para tal utilizaremos a seguinte ferramenta:
+[jwt.io](https://jwt.io/)
+
+Agora, copie o token gerado, e utilize o jwt.io, para decodificar o token:
+![image](https://github.com/user-attachments/assets/caac30fe-2074-4360-b169-4a6067dd2061)
+
+Como é possível verificar, o token carrega as configurações que acabamos de carregar na classe CashCardJwtTokenGenerator.java.
+
+## Interrogar a aplicação com o token
+``` bash
+http :8080/cashcards "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYXJhaDEiLCJhdWQiOiJjYXNoY2FyZC1jbGllbnQiLCJzY3AiOlsiY2FzaGNhcmQ6cmVhZCIsImNhc2hjYXJkOndyaXRlIl0sImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImV4cCI6MTcyMzc1OTMzNiwiaWF0IjoxNzIzNTU5MzM2fQ.VrA3MLB9VvIq4oT5uhRM5UL1N7LyJeSQTx-1mIYzaWPsjLpTjkap7jvv8wiB3d5P2sEZlljxu_cGELeQxkTCHVm0GFRfK0rlXGQ6ut3CgzIXxiluXNIrn9sfJMYla9tqMY9G0fhZqscGonEMCD6bBOhvHoopPPo74iLSyuG8ZkJD0b26rxhp9prz7DNTf8U7dq-bYv40L2sXb1r31IxphgEbIU2fUpjFr2IWHaOnmbuucPO1gJYpKYE3SDfHPYoAKCdNr9Tt5lDjSoqGT_0g7AJcaH0sOtPl-xaZLsybnMunhYYeQrClpqs6q0c0-nOzAL5JFiz58alJlFUAcpU3Pg"
+```
+Ou se desejar, a mesma requisição pode ser feita via Postman, conforme abaixo:
+![image](https://github.com/user-attachments/assets/74715645-a69e-468b-9657-fd5c909359d0)
+
+ O retorno esperado deve ser algo parecido com o que segue:
+ ``` bash
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Connection: keep-alive
+Content-Type: application/json
+Date: Tue, 13 Aug 2024 14:34:57 GMT
+Expires: 0
+Keep-Alive: timeout=60
+Pragma: no-cache
+Transfer-Encoding: chunked
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 0
+
+[
+    {
+        "amount": 123.45,
+        "id": 99,
+        "owner": "sarah1"
+    },
+    {
+        "amount": 1.0,
+        "id": 100,
+        "owner": "sarah1"
+    },
+    {
+        "amount": 150.0,
+        "id": 101,
+        "owner": "esuez5"
+    }
+]
+```
+Veja que o retorno, inclui as informações de outro usuário, diferente do usuário que está configurado no token. Veremos em seguida uma das maneiras para resolver esse problema.
+
+## A Instância de Autenticação:
+
+Observando os logs de nossa aplicação, podemos observar o seguinte:
+``` bash
+JwtAuthenticationToken [Principal=org.springframework.security.oauth2.jwt.Jwt@da5265e9, Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=127.0.0.1, SessionId=null], Granted Authorities=[SCOPE_cashcard:read, SCOPE_cashcard:write]]
+```
+Como é possível observar a instância gerada, carrega as seguintes informações:
+* Um *principal*, que é o conjunto de reivindicações
+* Uma *credencial*, que é o JWT original assinado e
+* Um conjunto de *autoridades, cada escopo prefixado por SCOPE_
+  
+Você pode ver que a instância de autenticação para nosso aplicativo Cash Card é: SCOPE_cashcard:read e SCOPE_cashcard:write.
+
+# Acessando Informações de Autenticação
+## O Security Context Holder
+Para acessar informações sobre a instância do *principal* que está utilizando nossa aplicação vamos utilizar o SecurityContext.
+Ex.:
+```java
+SecurityContext context = SecurityContextHolder.getContext();
+Authentication authentication = context.getAuthentication();
+```
+Para por exemplo, modificarmos o método findAll() para que o mesmo busque somente as informações do próprio *owner*, ficaria assim:
+
+```java
+@GetMapping
+public ResponseEntity<Iterable<CashCard>> findAll() {
+    Jwt owner = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    return ResponseEntity.ok(this.cashCards.findByOwner(owner.getSubject()));
+}
+```
+
+O Security Context, normalmente, é utilizado em classes, as quais não são gerenciadas pelo Spring Boot, ou em outras palavras, em classes que não sejam beans.
+Se você se encontrar dentro de um objeto Java simples e antigo, ou POJO, e precisar do SecurityContext, SecurityContextHolder.getContext()é uma opção válida.
+O *SecurityContextHolder* usa a *ThreadLocal* para armazenar o contexto de segurança, o que significa que ele é específico para o thread atual. Portanto, você pode acessar as informações de autenticação dentro do mesmo thread em todo o seu aplicativo.
+
+# Prática 4 - Personalizando a busca de Cartões
+
+Como visto anteriormente, ao interrogarmos a aplicação, no endpoint *cashcards*, mesmo com o token, tendo em seu conteúdo, informações sobre o usuário e seus escopos, a busca por cartões estava retornando informações de todos os usuários, e não somente as que pertencem ao usuário que está solicitando essas informações.
+Para resolver esse problema, vamos editar a classe *CashCardRepository.java*:
+```java
+package example.cashcardoauth2;
+
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface CashCardRepository extends CrudRepository<CashCard, Long> {
+    Iterable<CashCard> findByOwner(String owner);
+
+    default Iterable<CashCard> findAll() {
+        SecurityContext context = SecurityContextHolder.getContext();
+        Authentication authentication = context.getAuthentication();
+        String owner = (String) authentication.getName();
+        return findByOwner(owner);
+    }
+}
+```
+Aqui utilizamos o SecurityContextHolder, para descobrirmos qual é o usuário que está interrogando a aplicação.
+Essas informações, ficam no token, que geramos anteriormente.
+Dessa forma, é possível buscar as informações pertencentes somente ao usuário que é dono das mesmas.
+
+### Interrogar a aplicação novamente
+``` bash
+http :8080/cashcards "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYXJhaDEiLCJhdWQiOiJjYXNoY2FyZC1jbGllbnQiLCJzY3AiOlsiY2FzaGNhcmQ6cmVhZCIsImNhc2hjYXJkOndyaXRlIl0sImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImV4cCI6MTcyMzc1OTMzNiwiaWF0IjoxNzIzNTU5MzM2fQ.VrA3MLB9VvIq4oT5uhRM5UL1N7LyJeSQTx-1mIYzaWPsjLpTjkap7jvv8wiB3d5P2sEZlljxu_cGELeQxkTCHVm0GFRfK0rlXGQ6ut3CgzIXxiluXNIrn9sfJMYla9tqMY9G0fhZqscGonEMCD6bBOhvHoopPPo74iLSyuG8ZkJD0b26rxhp9prz7DNTf8U7dq-bYv40L2sXb1r31IxphgEbIU2fUpjFr2IWHaOnmbuucPO1gJYpKYE3SDfHPYoAKCdNr9Tt5lDjSoqGT_0g7AJcaH0sOtPl-xaZLsybnMunhYYeQrClpqs6q0c0-nOzAL5JFiz58alJlFUAcpU3Pg"
+```
+O retorno, dessa vez, deverá ser somente do proprietário do token:
+```bash
+Connection: keep-alive
+Content-Type: application/json
+Date: Tue, 13 Aug 2024 15:32:42 GMT
+Expires: 0
+Keep-Alive: timeout=60
+Pragma: no-cache
+Transfer-Encoding: chunked
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 0
+
+[
+    {
+        "amount": 123.45,
+        "id": 99,
+        "owner": "sarah1"
+    },
+    {
+        "amount": 1.0,
+        "id": 100,
+        "owner": "sarah1"
+    }
+]
+```
