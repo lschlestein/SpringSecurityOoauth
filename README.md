@@ -619,7 +619,7 @@ Dessa forma o Spring Boot se autoconfigurará, e adicionará os módulos Spring 
 
 ## Configurando o Resource Server
 
-Agora precisamos como a nossa API REST, que agora é um resource server Oauth 2.0, irá verificar as assinaturas JWT. Normalmente se utilizam chaves públicas para verificar essas assinaturas, sendo assim, utiliza as chaves públicas contidas nesse repositório [chaves colocar o link aqui]().
+Agora precisamos como a nossa API REST, que agora é um resource server Oauth 2.0, irá verificar as assinaturas JWT. Normalmente se utilizam chaves públicas para verificar essas assinaturas, sendo assim, utiliza as chaves públicas contidas no próprio repositório. Há um pequeno erro no nome da chave contida no repositório, verifique se a configuração do application.properties, e do nome chave estão coerentes.
 Faça a seguinte configuração no application.properties:
 ``` bash
 spring.security.oauth2.resourceserver.jwt.public-key-location = classpath:authz.pub
@@ -628,7 +628,7 @@ Certifique-se de a chave authz.pub está no diretório *resources* do projeto.
 
 Após configurar o Resource Server, o Spring Boot ativará a auto configuração do nosso resource server.
 
-## Verifique se os testes ainda funcionam   **v e r i f i c a r**
+## Verifique se os testes ainda funcionam 
 ``` bash
 mvn test
 ```
